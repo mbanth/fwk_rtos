@@ -44,6 +44,12 @@ struct rtos_i2c_master_struct {
     __attribute__((fptrgroup("rtos_i2c_master_reg_read_fptr_grp")))
     i2c_regop_res_t (*reg_read)(rtos_i2c_master_t *, uint8_t, uint8_t, uint8_t *);
 
+    __attribute__((fptrgroup("rtos_i2c_master_reg_multiwrite_fptr_grp")))
+    i2c_regop_res_t (*reg_multiwrite)(rtos_i2c_master_t *, uint8_t, uint8_t, uint8_t, uint8_t*);
+
+    __attribute__((fptrgroup("rtos_i2c_master_reg_multiread_fptr_grp")))
+    i2c_regop_res_t (*reg_multiread)(rtos_i2c_master_t *, uint8_t, uint8_t, uint8_t, uint8_t*);
+
     i2c_master_t ctx;
 
     rtos_osal_mutex_t lock;
@@ -189,6 +195,72 @@ inline i2c_regop_res_t  rtos_i2c_master_reg_read(
         uint8_t *data)
 {
     return ctx->reg_read(ctx, device_addr, reg_addr, data);
+}
+
+/**
+ * Write a multibyte transaction to an 8-bit register on an I2C device.
+ *
+ * This function writes to an 8-bit addressed, 8-bit register in
+ * an I2C device. The function writes the data by sending the
+ * register address followed by the register data to the device
+ * at the specified device address. This is a multi-byte transaction; the data
+ * is therefore composed of multiple bytes which will be transmitted one after
+ * the other, without resending the device and register addresses between data
+ * bytes. Whether the device internally automatically increments the target
+ * register or not is an implementation detail on the device.
+ *
+ * \param ctx          A pointer to the I2C master driver instance to use.
+ * \param device_addr  The address of the device to write to.
+ * \param reg_addr     The address of the register to write to.
+ * \param n_bytes      The number of bytes to write.
+ * \param data         A pointer to an array of 8-bit values to write.
+ *
+ * \retval             ``I2C_REGOP_DEVICE_NACK`` if the address is NACKed.
+ * \retval             ``I2C_REGOP_INCOMPLETE`` if not all data was ACKed.
+ * \retval             ``I2C_REGOP_SUCCESS`` on successful completion of the write.
+ */
+inline i2c_regop_res_t  rtos_i2c_master_reg_multiwrite(
+        rtos_i2c_master_t *ctx,
+        uint8_t device_addr,
+        uint8_t reg_addr,
+        uint8_t n_bytes,
+        uint8_t *data)
+{
+    return ctx->reg_multiwrite(ctx, device_addr, reg_addr, n_bytes, data);
+}
+
+/**
+ * Reads multiple bytes from an 8-bit register on an I2C device.
+ *
+ * This function reads from an 8-bit addressed, 8-bit register in
+ * an I2C device. The function reads the data by sending the
+ * register address followed reading the register data from the
+ * device at the specified device address. This is a multi-byte transaction; the
+ * data will therefore be composed of multiple bytes which will be requested one
+ * after the other, without resending the device and register addresses between
+ * data bytes. Whether the device internally automatically increments the target
+ * register or not is an implementation detail on the device.
+ *
+ * Note that no stop bit is transmitted between the write and the read.
+ * The operation is performed as one transaction using a repeated start.
+ *
+ * \param ctx          A pointer to the I2C master driver instance to use.
+ * \param device_addr  The address of the device to read from.
+ * \param reg_addr     The address of the register to read from.
+ * \param n_bytes      The number of bytes to read.
+ * \param data         A pointer to the array of bytes to fill with data read from the register.
+ *
+ * \retval             ``I2C_REGOP_DEVICE_NACK`` if the device NACKed.
+ * \retval             ``I2C_REGOP_SUCCESS`` on successful completion of the read.
+ */
+inline i2c_regop_res_t  rtos_i2c_master_reg_multiread(
+        rtos_i2c_master_t *ctx,
+        uint8_t device_addr,
+        uint8_t reg_addr,
+        uint8_t n_bytes,
+        uint8_t *data)
+{
+    return ctx->reg_multiread(ctx, device_addr, reg_addr, n_bytes, data);
 }
 
 /**@}*/

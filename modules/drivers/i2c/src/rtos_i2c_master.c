@@ -96,6 +96,42 @@ static i2c_regop_res_t i2c_master_local_reg_write(
     return reg_res;
 }
 
+__attribute__((fptrgroup("rtos_i2c_master_reg_multiwrite_fptr_grp")))
+static i2c_regop_res_t i2c_master_local_reg_multiwrite(
+        rtos_i2c_master_t *ctx,
+        uint8_t device_addr,
+        uint8_t reg_addr,
+        uint8_t n_bytes,
+        uint8_t *data)
+{
+    i2c_regop_res_t reg_res;
+    i2c_res_t res;
+    size_t num_bytes_sent = 0;
+
+    uint8_t * buf = rtos_osal_malloc(n_bytes + 1);
+
+    buf[0] = reg_addr;
+    memcpy(&buf[1], data, n_bytes);
+
+    res = i2c_master_local_write(ctx, device_addr, buf, n_bytes + 1, &num_bytes_sent, 1);
+
+    rtos_osal_free(buf);
+
+    if (res == I2C_ACK) {
+        if (num_bytes_sent == 0) {
+            reg_res = I2C_REGOP_DEVICE_NACK;
+        } else if (num_bytes_sent < n_bytes + 1) {
+            reg_res = I2C_REGOP_INCOMPLETE;
+        } else {
+            reg_res = I2C_REGOP_SUCCESS;
+        }
+    } else {
+        reg_res = I2C_REGOP_DEVICE_NACK;
+    }
+
+    return reg_res;
+}
+
 __attribute__((fptrgroup("rtos_i2c_master_reg_read_fptr_grp")))
 static i2c_regop_res_t  i2c_master_local_reg_read(
         rtos_i2c_master_t *ctx,
@@ -123,6 +159,47 @@ static i2c_regop_res_t  i2c_master_local_reg_read(
 
     if (reg_res == I2C_REGOP_SUCCESS) {
         res = i2c_master_local_read(ctx, device_addr, data, 1, 1);
+
+        if (res == I2C_ACK) {
+            reg_res = I2C_REGOP_SUCCESS;
+        } else {
+            reg_res = I2C_REGOP_DEVICE_NACK;
+        }
+    }
+
+    rtos_osal_mutex_put(&ctx->lock);
+
+    return reg_res;
+}
+
+__attribute__((fptrgroup("rtos_i2c_master_reg_multiread_fptr_grp")))
+static i2c_regop_res_t  i2c_master_local_reg_multiread(
+        rtos_i2c_master_t *ctx,
+        uint8_t device_addr,
+        uint8_t reg_addr,
+        uint8_t n_bytes,
+        uint8_t *data)
+{
+    i2c_regop_res_t reg_res;
+    i2c_res_t res;
+    size_t num_bytes_sent = 0;
+
+    rtos_osal_mutex_get(&ctx->lock, RTOS_OSAL_WAIT_FOREVER);
+
+    res = i2c_master_local_write(ctx, device_addr, &reg_addr, 1, &num_bytes_sent, 0);
+
+    if (res == I2C_ACK) {
+        if (num_bytes_sent == 0) {
+            reg_res = I2C_REGOP_DEVICE_NACK;
+        } else {
+            reg_res = I2C_REGOP_SUCCESS;
+        }
+    } else {
+        reg_res = I2C_REGOP_DEVICE_NACK;
+    }
+
+    if (reg_res == I2C_REGOP_SUCCESS) {
+        res = i2c_master_local_read(ctx, device_addr, data, n_bytes, 1);
 
         if (res == I2C_ACK) {
             reg_res = I2C_REGOP_SUCCESS;
@@ -176,4 +253,6 @@ void rtos_i2c_master_init(
     i2c_master_ctx->stop_bit_send = i2c_master_local_stop_bit_send;
     i2c_master_ctx->reg_write = i2c_master_local_reg_write;
     i2c_master_ctx->reg_read = i2c_master_local_reg_read;
+    i2c_master_ctx->reg_multiwrite = i2c_master_local_reg_multiwrite;
+    i2c_master_ctx->reg_multiread = i2c_master_local_reg_multiread;
 }
