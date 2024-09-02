@@ -1,6 +1,12 @@
 // Copyright 2020-2023 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#define DEBUG_UNIT RTOS_I2C_MASTER_RPC
+#ifndef DEBUG_PRINT_ENABLE_RTOS_I2C_MASTER_RPC
+#define DEBUG_PRINT_ENABLE_RTOS_I2C_MASTER_RPC 1
+#endif
+#include "debug_print.h"
+
 #include "rtos_rpc.h"
 #include "rtos_i2c_master.h"
 
@@ -9,7 +15,9 @@ enum {
     fcode_read,
     fcode_stop_bit_send,
     fcode_reg_write,
-    fcode_reg_read
+    fcode_reg_read,
+    fcode_reg_multiwrite,
+    fcode_reg_multiread
 };
 
 __attribute__((fptrgroup("rtos_i2c_master_write_fptr_grp")))
@@ -135,6 +143,37 @@ static i2c_regop_res_t i2c_master_remote_reg_write(
     return ret;
 }
 
+__attribute__((fptrgroup("rtos_i2c_master_reg_multiwrite_fptr_grp")))
+static i2c_regop_res_t i2c_master_remote_reg_multiwrite(
+        rtos_i2c_master_t *i2c_master_ctx,
+        uint8_t device_addr,
+        uint8_t reg_addr,
+        uint8_t n_bytes,
+        uint8_t *data)
+{
+    rtos_intertile_address_t *host_address = &i2c_master_ctx->rpc_config->host_address;
+    rtos_i2c_master_t *host_ctx_ptr = i2c_master_ctx->rpc_config->host_ctx_ptr;
+    i2c_regop_res_t ret;
+
+    xassert(host_address->port >= 0);
+
+    const rpc_param_desc_t rpc_param_desc[] = {
+            RPC_PARAM_TYPE(i2c_master_ctx),
+            RPC_PARAM_TYPE(device_addr),
+            RPC_PARAM_TYPE(reg_addr),
+            RPC_PARAM_TYPE(n_bytes),
+            RPC_PARAM_IN_BUFFER(data, n_bytes),
+            RPC_PARAM_RETURN(i2c_regop_res_t),
+            RPC_PARAM_LIST_END
+    };
+
+    rpc_client_call_generic(
+            host_address->intertile_ctx, host_address->port, fcode_reg_multiwrite, rpc_param_desc,
+            &host_ctx_ptr, &device_addr, &reg_addr, &n_bytes, data, &ret);
+
+    return ret;
+}
+
 __attribute__((fptrgroup("rtos_i2c_master_reg_read_fptr_grp")))
 static i2c_regop_res_t  i2c_master_remote_reg_read(
         rtos_i2c_master_t *i2c_master_ctx,
@@ -160,6 +199,37 @@ static i2c_regop_res_t  i2c_master_remote_reg_read(
     rpc_client_call_generic(
             host_address->intertile_ctx, host_address->port, fcode_reg_read, rpc_param_desc,
             &host_ctx_ptr, &device_addr, &reg_addr, data, &ret);
+
+    return ret;
+}
+
+__attribute__((fptrgroup("rtos_i2c_master_reg_multiread_fptr_grp")))
+static i2c_regop_res_t i2c_master_remote_reg_multiread(
+        rtos_i2c_master_t *i2c_master_ctx,
+        uint8_t device_addr,
+        uint8_t reg_addr,
+        uint8_t n_bytes,
+        uint8_t *data)
+{
+    rtos_intertile_address_t *host_address = &i2c_master_ctx->rpc_config->host_address;
+    rtos_i2c_master_t *host_ctx_ptr = i2c_master_ctx->rpc_config->host_ctx_ptr;
+    i2c_regop_res_t ret;
+
+    xassert(host_address->port >= 0);
+
+    const rpc_param_desc_t rpc_param_desc[] = {
+            RPC_PARAM_TYPE(i2c_master_ctx),
+            RPC_PARAM_TYPE(device_addr),
+            RPC_PARAM_TYPE(reg_addr),
+            RPC_PARAM_TYPE(n_bytes),
+            RPC_PARAM_OUT_BUFFER(data, n_bytes),
+            RPC_PARAM_RETURN(i2c_regop_res_t),
+            RPC_PARAM_LIST_END
+    };
+
+    rpc_client_call_generic(
+            host_address->intertile_ctx, host_address->port, fcode_reg_multiread, rpc_param_desc,
+            &host_ctx_ptr, &device_addr, &reg_addr, &n_bytes, data, &ret);
 
     return ret;
 }
@@ -259,6 +329,30 @@ static int i2c_master_reg_write_rpc_host(rpc_msg_t *rpc_msg, uint8_t **resp_msg)
     return msg_length;
 }
 
+static int i2c_master_reg_multiwrite_rpc_host(rpc_msg_t *rpc_msg, uint8_t **resp_msg)
+{
+    int msg_length;
+
+    rtos_i2c_master_t *i2c_master_ctx;
+    uint8_t device_addr;
+    uint8_t reg_addr;
+    uint8_t n_bytes;
+    uint8_t *data;
+    i2c_regop_res_t ret;
+
+    rpc_request_unmarshall(
+            rpc_msg,
+            &i2c_master_ctx, &device_addr, &reg_addr, &n_bytes, &data, &ret);
+
+    ret = rtos_i2c_master_reg_multiwrite(i2c_master_ctx, device_addr, reg_addr, n_bytes, data);
+
+    msg_length = rpc_response_marshall(
+            resp_msg, rpc_msg,
+            i2c_master_ctx, device_addr, reg_addr, n_bytes, data, ret);
+
+    return msg_length;
+}
+
 static int i2c_master_reg_read_rpc_host(rpc_msg_t *rpc_msg, uint8_t **resp_msg)
 {
     int msg_length;
@@ -278,6 +372,34 @@ static int i2c_master_reg_read_rpc_host(rpc_msg_t *rpc_msg, uint8_t **resp_msg)
     msg_length = rpc_response_marshall(
             resp_msg, rpc_msg,
             i2c_master_ctx, device_addr, reg_addr, data, ret);
+
+    return msg_length;
+}
+
+static int i2c_master_reg_multiread_rpc_host(rpc_msg_t *rpc_msg, uint8_t **resp_msg)
+{
+    int msg_length;
+
+    rtos_i2c_master_t *i2c_master_ctx;
+    uint8_t device_addr;
+    uint8_t reg_addr;
+    uint8_t n_bytes;
+    uint8_t *data;
+    i2c_regop_res_t ret;
+
+    rpc_request_unmarshall(
+            rpc_msg,
+            &i2c_master_ctx, &device_addr, &reg_addr, &n_bytes, &data, &ret);
+        
+    data = rtos_osal_malloc(n_bytes);
+
+    ret = rtos_i2c_master_reg_multiread(i2c_master_ctx, device_addr, reg_addr, n_bytes, data);
+
+    msg_length = rpc_response_marshall(
+            resp_msg, rpc_msg,
+            i2c_master_ctx, device_addr, reg_addr, n_bytes, data, ret);
+        
+    rtos_osal_free(data);
 
     return msg_length;
 }
@@ -312,6 +434,12 @@ static void i2c_master_rpc_thread(rtos_intertile_address_t *client_address)
             break;
         case fcode_reg_read:
             msg_length = i2c_master_reg_read_rpc_host(&rpc_msg, &resp_msg);
+            break;
+        case fcode_reg_multiwrite:
+            msg_length = i2c_master_reg_multiwrite_rpc_host(&rpc_msg, &resp_msg);
+            break;
+        case fcode_reg_multiread:
+            msg_length = i2c_master_reg_multiread_rpc_host(&rpc_msg, &resp_msg);
             break;
         }
 
@@ -374,6 +502,8 @@ void rtos_i2c_master_rpc_client_init(
     i2c_master_ctx->stop_bit_send = i2c_master_remote_stop_bit_send;
     i2c_master_ctx->reg_write = i2c_master_remote_reg_write;
     i2c_master_ctx->reg_read = i2c_master_remote_reg_read;
+    i2c_master_ctx->reg_multiwrite = i2c_master_remote_reg_multiwrite;
+    i2c_master_ctx->reg_multiread = i2c_master_remote_reg_multiread;
     rpc_config->rpc_host_start = NULL;
     rpc_config->remote_client_count = 0;
     rpc_config->host_task_priority = -1;
