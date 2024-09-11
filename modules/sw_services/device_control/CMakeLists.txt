@@ -6,6 +6,7 @@ if((${CMAKE_SYSTEM_NAME} STREQUAL XCORE_XS3A) OR (${CMAKE_SYSTEM_NAME} STREQUAL 
         INTERFACE
             src/device_control.c
             src/resource_table.c
+            transport/hid/device_control_hid.c
             transport/i2c/device_control_i2c.c
             transport/usb/device_control_usb.c
             transport/spi/device_control_spi.c
@@ -13,6 +14,7 @@ if((${CMAKE_SYSTEM_NAME} STREQUAL XCORE_XS3A) OR (${CMAKE_SYSTEM_NAME} STREQUAL 
     target_include_directories(framework_rtos_sw_services_device_control
         INTERFACE
             api
+            transport/hid
             transport/i2c
             transport/usb
             transport/spi
@@ -20,6 +22,7 @@ if((${CMAKE_SYSTEM_NAME} STREQUAL XCORE_XS3A) OR (${CMAKE_SYSTEM_NAME} STREQUAL 
     target_link_libraries(framework_rtos_sw_services_device_control
         INTERFACE
             rtos::osal
+            rtos::sw_services::hid
             rtos::drivers::i2c
             rtos::drivers::spi
             rtos::sw_services::usb
@@ -69,4 +72,46 @@ else()
 
     ## Create an alias
     add_library(rtos::sw_services::device_control_host_usb ALIAS framework_rtos_sw_services_device_control_host_usb)
+
+    ## Host app
+    add_library(framework_rtos_sw_services_device_control_host_hid INTERFACE)
+
+    # Discern OS for libusb library location
+    if ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin") AND (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64"))
+        target_link_directories(framework_rtos_sw_services_device_control_host_usb INTERFACE "host/libusb/OSX64")
+        set(libusb-1.0_INCLUDE_DIRS "host/libusb/OSX64")
+        set(LINK_LIBS usb-1.0.0)
+    elseif ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin") AND (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64"))
+        target_link_directories(framework_rtos_sw_services_device_control_host_usb INTERFACE "host/libusb/OSXARM")
+        set(libusb-1.0_INCLUDE_DIRS "host/libusb/OSXARM")
+        set(LINK_LIBS usb-1.0.0)
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+        find_package(PkgConfig)
+        pkg_check_modules(libusb-1.0 REQUIRED libusb-1.0)
+        set(LINK_LIBS usb-1.0)
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+        target_link_directories(framework_rtos_sw_services_device_control_host_usb INTERFACE "host/hidapi/Win32")
+        set(lib_hidapi_INCLUDE_DIRS "host/hidapi/include")
+        set(LINK_LIBS hidapi)
+    endif()
+
+    target_sources(framework_rtos_sw_services_device_control_host_hid
+        INTERFACE
+            host/util.c
+            host/device_access_hid.c
+    )
+    target_include_directories(framework_rtos_sw_services_device_control_host_hid
+        INTERFACE
+            api
+            host
+            ${libhidapi_INCLUDE_DIRS}
+    )
+    target_compile_definitions(framework_rtos_sw_services_device_control_host_hid INTERFACE USE_HID=1)
+    target_link_libraries(framework_rtos_sw_services_device_control_host_hid
+        INTERFACE
+            ${LINK_LIBS}
+    )
+
+    ## Create an alias
+    add_library(rtos::sw_services::device_control_host_hid ALIAS framework_rtos_sw_services_device_control_host_hid)
 endif()
