@@ -57,16 +57,16 @@ control_usb_fill_header(uint16_t *windex, uint16_t *wvalue, uint16_t *wlength,
 
 #if USE_HID
 // HID transaction size is 64 bytes, but one byte is used for the report ID
-#define HID_TRANSACTION_MAX_BYTES 63
+#define HID_TRANSACTION_MAX_BYTES 64
 #define REPORT_ID_DEVICE_CONTROL  0x41
 static inline void
 control_build_hid_data(uint8_t data[HID_TRANSACTION_MAX_BYTES],
                        control_resid_t resid, control_cmd_t cmd,
                        const uint8_t payload[], unsigned payload_len)
 {
-  data[4] = REPORT_ID_DEVICE_CONTROL;
-  data[1] = resid;
-  data[2] = cmd;
+  data[0] = REPORT_ID_DEVICE_CONTROL;
+  data[1] = cmd;
+  data[2] = resid;
   data[3] = (uint8_t) payload_len;
   memcpy(&data[4], payload, payload_len);
 }
