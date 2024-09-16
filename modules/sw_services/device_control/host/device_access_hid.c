@@ -17,7 +17,7 @@ typedef enum { false = 0, true = 1} bool;
 #include "device_control_host.h"
 #include "control_host_support.h"
 #include "util.h"
-#define DBG(x) x
+
 static unsigned num_commands = 0;
 
 static hid_device *devh = NULL;
@@ -77,7 +77,6 @@ control_write_command(control_resid_t resid, control_cmd_t cmd,
   int res;
   if (payload_len_exceeds_control_packet_size(payload_len))
     return CONTROL_DATA_LENGTH_ERROR;
-
   control_build_hid_data(buf, resid, CONTROL_CMD_SET_WRITE(cmd), payload, (unsigned int)payload_len);
   DBG(printf("%u: send HID output report: 0x%04x 0x%04x 0x%04x ",
     num_commands, resid, CONTROL_CMD_SET_WRITE(cmd), payload_len));
@@ -88,7 +87,7 @@ control_write_command(control_resid_t resid, control_cmd_t cmd,
   if (res < 0) {
     PRINT_ERROR("%ls\n", hid_error(devh));
   } else {
-    printf("Data sent successfully\n");
+    DBG(printf("Data sent successfully\n"));
   }
   return CONTROL_SUCCESS;
 /*
@@ -130,15 +129,19 @@ control_read_command(control_resid_t resid, control_cmd_t cmd,
   if (res < 0) {
     PRINT_ERROR("%ls\n", hid_error(devh));
   } else {
-    printf("Data sent successfully\n");
+    DBG(printf("Data sent successfully\n"));
   }
+
+  // Wait for the device to process the first request
+  usleep(1000);
+
   control_build_hid_data(buf, resid, CONTROL_CMD_SET_READ(cmd), payload, (unsigned int)payload_len);
 
   res = hid_get_input_report(devh, buf, sizeof(buf));
   if (res < 0) {
     PRINT_ERROR("%ls\n", hid_error(devh));
   } else {
-    printf("Data received successfully\n");
+    DBG(printf("Data received successfully\n"));
   }
   DBG(printf("%u: read HID input report: ", num_commands));
   DBG(print_bytes(buf, HID_TRANSACTION_MAX_BYTES));
@@ -191,11 +194,13 @@ control_ret_t control_init_hid(int vendor_id, int product_id)
     PRINT_ERROR("Unable to open device\n");
     return CONTROL_ERROR;
   }
+  // TODO: Remove the lines below, as hid_get_report_descriptor() is not supported on Linux
+  /*
   uint8_t buf[1024] = {0};
   hid_get_report_descriptor(devh, buf, 1024);
   for (int i = 0; i < 1024; i++) {
     printf("%0.2x ", buf[i]);
-  }
+  }*/
   hid_set_nonblocking(devh, 1);
   return CONTROL_SUCCESS;
 }
