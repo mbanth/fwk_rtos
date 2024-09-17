@@ -1,6 +1,11 @@
 RTOS Framework change log
 =========================
 
+3.3.0
+-----
+
+  * UPDATED: To tinyusb_src v0.17.0.
+
 3.2.0
 -----
 
