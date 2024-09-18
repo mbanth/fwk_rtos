@@ -73,45 +73,4 @@ else()
     ## Create an alias
     add_library(rtos::sw_services::device_control_host_usb ALIAS framework_rtos_sw_services_device_control_host_usb)
 
-    ## Host app
-    add_library(framework_rtos_sw_services_device_control_host_hid INTERFACE)
-
-    # Discern OS for libusb library location
-    if ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin") AND (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64"))
-        target_link_directories(framework_rtos_sw_services_device_control_host_usb INTERFACE "host/libusb/OSX64")
-        set(libusb-1.0_INCLUDE_DIRS "host/libusb/OSX64")
-        set(LINK_LIBS usb-1.0.0)
-    elseif ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin") AND (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64"))
-        target_link_directories(framework_rtos_sw_services_device_control_host_usb INTERFACE "host/libusb/OSXARM")
-        set(libusb-1.0_INCLUDE_DIRS "host/libusb/OSXARM")
-        set(LINK_LIBS usb-1.0.0)
-    elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-        find_package(PkgConfig)
-        pkg_check_modules(libusb-1.0 REQUIRED libusb-1.0)
-        set(LINK_LIBS usb-1.0)
-    elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-        target_link_directories(framework_rtos_sw_services_device_control_host_usb INTERFACE "host/hidapi/Win32")
-        set(lib_hidapi_INCLUDE_DIRS "host/hidapi/include")
-        set(LINK_LIBS hidapi)
-    endif()
-
-    target_sources(framework_rtos_sw_services_device_control_host_hid
-        INTERFACE
-            host/util.c
-            host/device_access_hid.c
-    )
-    target_include_directories(framework_rtos_sw_services_device_control_host_hid
-        INTERFACE
-            api
-            host
-            ${libhidapi_INCLUDE_DIRS}
-    )
-    target_compile_definitions(framework_rtos_sw_services_device_control_host_hid INTERFACE USE_HID=1)
-    target_link_libraries(framework_rtos_sw_services_device_control_host_hid
-        INTERFACE
-            ${LINK_LIBS}
-    )
-
-    ## Create an alias
-    add_library(rtos::sw_services::device_control_host_hid ALIAS framework_rtos_sw_services_device_control_host_hid)
 endif()

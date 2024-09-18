@@ -27,35 +27,20 @@ static const int sync_timeout_ms = 500;
 /* Control query transfers require smaller buffers */
 #define VERSION_MAX_PAYLOAD_SIZE 63
 
-/*
+
 control_ret_t control_query_version(control_version_t *version)
 {
-  uint16_t windex, wvalue, wlength;
+  control_ret_t ret;
   uint8_t request_data[VERSION_MAX_PAYLOAD_SIZE];
 
-  control_usb_fill_header(&windex, &wvalue, &wlength,
-    CONTROL_SPECIAL_RESID, CONTROL_GET_VERSION, sizeof(control_version_t));
-
-  DBG(printf("%u: send version command: 0x%04x 0x%04x 0x%04x\n",
-    num_commands, windex, wvalue, wlength));
-
-  int ret = libusb_control_transfer(devh,
-    LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE,
-    0, wvalue, windex, request_data, wlength, sync_timeout_ms);
-
-  num_commands++;
-
-  if (ret != sizeof(control_version_t)) {
-    debug_libusb_error(ret);
-    return CONTROL_ERROR;
-  }
+  ret = control_read_command(CONTROL_SPECIAL_RESID, CONTROL_GET_VERSION, request_data, sizeof(control_version_t));
 
   memcpy(version, request_data, sizeof(control_version_t));
   DBG(printf("version returned: 0x%X\n", *version));
 
   return CONTROL_SUCCESS;
 }
-*/
+
 
 static bool payload_len_exceeds_control_packet_size(size_t payload_len)
 {
@@ -89,25 +74,11 @@ control_write_command(control_resid_t resid, control_cmd_t cmd,
   } else {
     DBG(printf("Data sent successfully\n"));
   }
+  num_commands++;
+  // TODO: Read back write command status
+
   return CONTROL_SUCCESS;
-/*
 
-  // Read back write command status
-  uint8_t status;
-  control_usb_fill_header(&windex, &wvalue, &wlength,
-    resid, CONTROL_CMD_SET_WRITE(cmd), 1);
-
-  ret = libusb_control_transfer(devh,
-    LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE,
-    0, wvalue, windex, &status, wlength, sync_timeout_ms);
-
-  if (ret != (int)1) {
-    debug_libusb_error(ret);
-    return CONTROL_ERROR;
-  }
-
-  return status;
-  */
 }
 
 control_ret_t
@@ -133,7 +104,11 @@ control_read_command(control_resid_t resid, control_cmd_t cmd,
   }
 
   // Wait for the device to process the first request
-  usleep(1000);
+  #ifdef _WIN32
+    Sleep(1); // Sleep takes milliseconds
+  #else
+    usleep(1000); // usleep takes microseconds
+  #endif
 
   control_build_hid_data(buf, resid, CONTROL_CMD_SET_READ(cmd), payload, (unsigned int)payload_len);
 
@@ -150,34 +125,7 @@ control_read_command(control_resid_t resid, control_cmd_t cmd,
 
   return CONTROL_SUCCESS;
 }
-/*  uint16_t windex, wvalue, wlength;
 
-  if (payload_len_exceeds_control_packet_size(payload_len))
-    return CONTROL_DATA_LENGTH_ERROR;
-
-  control_usb_fill_header(&windex, &wvalue, &wlength,
-    resid, CONTROL_CMD_SET_READ(cmd), (unsigned int)payload_len);
-
-  DBG(printf("%u: send read command: 0x%04x 0x%04x 0x%04x\n",
-    num_commands, windex, wvalue, wlength));
-
-  int ret = libusb_control_transfer(devh,
-    LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE,
-    0, wvalue, windex, payload, wlength, sync_timeout_ms);
-
-  num_commands++;
-
-  if (ret != (int)payload_len) {
-    debug_libusb_error(ret);
-    return CONTROL_ERROR;
-  }
-
-  DBG(printf("read data returned: "));
-  DBG(print_bytes(payload, payload_len));
-
-  return CONTROL_SUCCESS;
-}
-*/
 control_ret_t control_init_hid(int vendor_id, int product_id)
 {
 
@@ -194,13 +142,7 @@ control_ret_t control_init_hid(int vendor_id, int product_id)
     PRINT_ERROR("Unable to open device\n");
     return CONTROL_ERROR;
   }
-  // TODO: Remove the lines below, as hid_get_report_descriptor() is not supported on Linux
-  /*
-  uint8_t buf[1024] = {0};
-  hid_get_report_descriptor(devh, buf, 1024);
-  for (int i = 0; i < 1024; i++) {
-    printf("%0.2x ", buf[i]);
-  }*/
+
   hid_set_nonblocking(devh, 1);
   return CONTROL_SUCCESS;
 }
