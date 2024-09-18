@@ -26,7 +26,7 @@ static const int sync_timeout_ms = 500;
 
 /* Control query transfers require smaller buffers */
 #define VERSION_MAX_PAYLOAD_SIZE 63
-
+#define HEADER_SIZE 4 // HID report ID, resid, cmd, payload_len
 
 control_ret_t control_query_version(control_version_t *version)
 {
@@ -44,7 +44,7 @@ control_ret_t control_query_version(control_version_t *version)
 
 static bool payload_len_exceeds_control_packet_size(size_t payload_len)
 {
-  if (payload_len > HID_TRANSACTION_MAX_BYTES-4) {
+  if (payload_len > HID_TRANSACTION_MAX_BYTES-HEADER_SIZE) {
     printf("control transfer of %zd bytes requested\n", payload_len);
     printf("maximum control packet size is %d\n", HID_TRANSACTION_MAX_BYTES-4);
     return true;
@@ -65,7 +65,7 @@ control_write_command(control_resid_t resid, control_cmd_t cmd,
   control_build_hid_data(buf, resid, CONTROL_CMD_SET_WRITE(cmd), payload, (unsigned int)payload_len);
   DBG(printf("%u: send HID output report: 0x%04x 0x%04x 0x%04x ",
     num_commands, resid, CONTROL_CMD_SET_WRITE(cmd), payload_len));
-  DBG(print_bytes(&payload[4], HID_TRANSACTION_MAX_BYTES));
+  DBG(print_bytes(&payload[4], payload_len));
 
   // Send the output report
   res = hid_write(devh, buf, sizeof(buf));
@@ -93,7 +93,7 @@ control_read_command(control_resid_t resid, control_cmd_t cmd,
 
   control_build_hid_data(buf, resid, CONTROL_CMD_SET_READ(cmd), payload, (unsigned int)payload_len);
   DBG(printf("%u: send HID output report: ", num_commands));
-  DBG(print_bytes(buf, HID_TRANSACTION_MAX_BYTES));
+  DBG(print_bytes(buf, payload_len));
 
   // Send the output report
   res = hid_write(devh, buf, sizeof(buf));
@@ -107,7 +107,7 @@ control_read_command(control_resid_t resid, control_cmd_t cmd,
   #ifdef _WIN32
     Sleep(1); // Sleep takes milliseconds
   #else
-    usleep(1000); // usleep takes microseconds
+    usleep(20000); // usleep takes microseconds
   #endif
 
   control_build_hid_data(buf, resid, CONTROL_CMD_SET_READ(cmd), payload, (unsigned int)payload_len);
