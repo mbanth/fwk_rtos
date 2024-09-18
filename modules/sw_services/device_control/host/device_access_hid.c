@@ -107,7 +107,7 @@ control_read_command(control_resid_t resid, control_cmd_t cmd,
   #ifdef _WIN32
     Sleep(1); // Sleep takes milliseconds
   #else
-    usleep(1000); // usleep takes microseconds
+    usleep(20000); // usleep takes microseconds
   #endif
 
   control_build_hid_data(buf, resid, CONTROL_CMD_SET_READ(cmd), payload, (unsigned int)payload_len);
