@@ -124,10 +124,11 @@ control_ret_t control_cleanup_usb(void);
  *
  *  \param vendor_id     Vendor ID of controlled HID device
  *  \param product_id    Product ID of controlled HID device
+ *  \param usage_page    Usage page of controlled HID device, used only on Windows platforms
  *
  *  \returns           Whether the initialization was successful or not
  */
-control_ret_t control_init_hid(int vendor_id, int product_id);
+control_ret_t control_init_hid(int vendor_id, int product_id, int usage_page);
 /** Shutdown the HID host interface connection
  *
  *  \returns           Whether the shutdown was successful or not

@@ -126,7 +126,7 @@ control_read_command(control_resid_t resid, control_cmd_t cmd,
   return CONTROL_SUCCESS;
 }
 
-control_ret_t control_init_hid(int vendor_id, int product_id)
+control_ret_t control_init_hid(int vendor_id, int product_id, int usage_page)
 {
 
   // Initialize the HIDAPI library
@@ -137,7 +137,11 @@ control_ret_t control_init_hid(int vendor_id, int product_id)
 
   // Open the device using the VID, PID,
   // and optionally the Serial number.
+#if WIN32
+  devh = hid_open(vendor_id, product_id, usage_page, NULL);
+#else
   devh = hid_open(vendor_id, product_id, NULL);
+#endif
   if (!devh) {
     PRINT_ERROR("Unable to open device\n");
     return CONTROL_ERROR;
