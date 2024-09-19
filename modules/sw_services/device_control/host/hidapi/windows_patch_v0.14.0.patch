@@ -1,0 +1,40 @@
+diff --git a/modules/sw_services/device_control/host/hidapi/hidapi/hidapi.h b/modules/sw_services/device_control/host/hidapi/hidapi/hidapi.h
+index 744ceb0b..2dfd2ecf 100644
+--- a/modules/sw_services/device_control/host/hidapi/hidapi/hidapi.h
++++ b/modules/sw_services/device_control/host/hidapi/hidapi/hidapi.h
+@@ -274,8 +274,11 @@ extern "C" {
+ 			@note The returned object must be freed by calling hid_close(),
+ 			      when not needed anymore.
+ 		*/
++#if WIN32
++		HID_API_EXPORT hid_device * HID_API_CALL hid_open(unsigned short vendor_id, unsigned short product_id, unsigned short usage_page, const wchar_t *serial_number);
++#else
+ 		HID_API_EXPORT hid_device * HID_API_CALL hid_open(unsigned short vendor_id, unsigned short product_id, const wchar_t *serial_number);
+-
++#endif
+ 		/** @brief Open a HID device by its path name.
+ 
+ 			The path name be determined by calling hid_enumerate(), or a
+diff --git a/modules/sw_services/device_control/host/hidapi/windows/hid.c b/modules/sw_services/device_control/host/hidapi/windows/hid.c
+index 69996914..9bda4c50 100644
+--- a/modules/sw_services/device_control/host/hidapi/windows/hid.c
++++ b/modules/sw_services/device_control/host/hidapi/windows/hid.c
+@@ -877,7 +877,7 @@ void  HID_API_EXPORT HID_API_CALL hid_free_enumeration(struct hid_device_info *d
+ 	}
+ }
+ 
+-HID_API_EXPORT hid_device * HID_API_CALL hid_open(unsigned short vendor_id, unsigned short product_id, const wchar_t *serial_number)
++HID_API_EXPORT hid_device * HID_API_CALL hid_open(unsigned short vendor_id, unsigned short product_id, unsigned short usage_page, const wchar_t *serial_number)
+ {
+ 	/* TODO: Merge this functions with the Linux version. This function should be platform independent. */
+ 	struct hid_device_info *devs, *cur_dev;
+@@ -894,7 +894,8 @@ HID_API_EXPORT hid_device * HID_API_CALL hid_open(unsigned short vendor_id, unsi
+ 	cur_dev = devs;
+ 	while (cur_dev) {
+ 		if (cur_dev->vendor_id == vendor_id &&
+-		    cur_dev->product_id == product_id) {
++		    cur_dev->product_id == product_id &&
++			cur_dev->usage_page == usage_page) {
+ 			if (serial_number) {
+ 				if (cur_dev->serial_number && wcscmp(serial_number, cur_dev->serial_number) == 0) {
+ 					path_to_open = cur_dev->path;
