@@ -274,8 +274,11 @@ extern "C" {
 			@note The returned object must be freed by calling hid_close(),
 			      when not needed anymore.
 		*/
+#if WIN32
+		HID_API_EXPORT hid_device * HID_API_CALL hid_open(unsigned short vendor_id, unsigned short product_id, unsigned short usage_page, const wchar_t *serial_number);
+#else
 		HID_API_EXPORT hid_device * HID_API_CALL hid_open(unsigned short vendor_id, unsigned short product_id, const wchar_t *serial_number);
-
+#endif
 		/** @brief Open a HID device by its path name.
 
 			The path name be determined by calling hid_enumerate(), or a
