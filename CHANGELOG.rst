@@ -5,7 +5,7 @@ RTOS Framework change log
 -----
 
   * ADDED: Support for MSOS2.0 descriptor to have WinUSB driver automatically assigned to DFU at the time
-    of enumeration on Windows.
+    of enumeration on Windows. This change is included in the USB descriptors of the USB tests.
   * ADDED: Support  for multiread and multiwrite functions to I2C master drivers.
 
 3.2.0
