@@ -36,11 +36,6 @@ Example for Debian:
 
     $ apt-get install dfu-util
 
-On Windows platforms, prior to running the test, the user must manually update
-the driver for the enumerated DFU interface using a driver utility such as
-`Zadig <https://zadig.akeo.ie/>`_ to use one of the available ``libusb``
-compatible drivers.
-
 **************
 Building Tests
 **************
