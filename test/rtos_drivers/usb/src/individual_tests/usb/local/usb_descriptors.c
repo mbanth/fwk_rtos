@@ -30,7 +30,7 @@
 #include "class/dfu/dfu_device.h"
 
 #define XMOS_VID            0x20B1
-#define TEST_PID            0x40FF
+#define TEST_PID            0x4000
 #define NUM_CONFIGURATIONS  0x01
 
 //--------------------------------------------------------------------+

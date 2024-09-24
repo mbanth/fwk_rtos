@@ -9,7 +9,7 @@ import argparse
 
 # USB VID:PID for test application
 vid=0x20B1
-pid=0x40FF
+pid=0x4000
 
 max_read_size=4096
 required_ports = 2
@@ -51,6 +51,7 @@ def main(if0, if1, of0, of1):
     test_ports = find_ports_by_vid_pid(required_ports, N_PORTS_ERROR_MSG)
     port0 = None
     port1 = None
+
     try:
         d0 = test_ports[0].device
         d1 = test_ports[1].device
