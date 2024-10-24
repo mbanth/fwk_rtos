@@ -47,18 +47,18 @@ def transfer_data(input_file, output_file, write_port, read_port, max_read_size)
             out_file.write(read_port.read(len(tx_data)))
 
 def main(if0, if1, of0, of1):
-    
+
     test_ports = find_ports_by_vid_pid(required_ports, N_PORTS_ERROR_MSG)
     port0 = None
     port1 = None
-    
+
     try:
         d0 = test_ports[0].device
         d1 = test_ports[1].device
 
         print(f'Opening port 0 ({d0}).')
         port0 = serial.Serial(d0)
-        
+
         print(f'Opening port 1 ({d1}).')
         port1 = serial.Serial(d1)
 
@@ -71,7 +71,7 @@ def main(if0, if1, of0, of1):
     except Exception as e:
         print(e)
         sys.exit(1)
-    
+
     finally:
         if port0 is not None:
             print('Closing port 0.')
