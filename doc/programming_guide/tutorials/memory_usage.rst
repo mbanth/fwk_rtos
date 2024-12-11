@@ -2,6 +2,9 @@
 Memory Usage
 ############
 
+This section describes how to check the memory usage for a given application.
+The user can get this information at compile time or after compilation.
+
 ************
 Compile Time
 ************
