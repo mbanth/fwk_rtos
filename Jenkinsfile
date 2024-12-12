@@ -1,4 +1,4 @@
-@Library('xmos_jenkins_shared_library@v0.33.0') _
+@Library('xmos_jenkins_shared_library@v0.34.0') _
 
 def runningOn(machine) {
   println "Stage running on:"
@@ -12,14 +12,6 @@ def checkSkipLink() {
         skip_linkcheck = "clean html pdf"
     }
     return skip_linkcheck
-}
-
-def buildDocs(String zipFileName) {
-  withVenv {
-    sh 'pip install git+ssh://git@github.com/xmos/xmosdoc@v5.2.0'
-    sh "xmosdoc ${checkSkipLink()}"
-    zip zipFile: zipFileName, archive: true, dir: "doc/_build"
-  }
 }
 
 getApproval()
@@ -43,6 +35,11 @@ pipeline {
             defaultValue: '15.2.1',
             description: 'The XTC tools version'
         )
+        string(
+            name: 'XMOSDOC_VERSION',
+            defaultValue: 'v6.2.0',
+            description: 'The xmosdoc version'
+        )
     }
     environment {
         PYTHON_VERSION = "3.8.11"
@@ -59,13 +56,10 @@ pipeline {
                     agent { label "documentation" }
                     steps {
                         runningOn(env.NODE_NAME)
-                        dir('fwk_rtos'){
-                            checkout scm
-                            createVenv()
-                            withTools(params.TOOLS_VERSION) {
-                                buildDocs("fwk_rtos_docs.zip")
-                            } // withTools
-                        } // dir
+                        checkout scm
+                        warnError("Docs") {
+                            buildDocs(archiveZipOnly: true)
+                        }
                     } // steps
                     post {
                         cleanup {

@@ -6,6 +6,7 @@ Tutorials
    :maxdepth: 2
 
    application_programming
-   application_design
    bsp_config
+   building_rtos_applications
+   memory_usage
    application_dfu_usage
